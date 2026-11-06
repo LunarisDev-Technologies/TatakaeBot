@@ -13,6 +13,7 @@ export interface IGuild {
   logChannelId?: string;
   modLogChannelId?: string;
   welcomeChannelId?: string;
+  ticketCategoryId?: string;
   verificationRoleId?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +33,7 @@ const GuildSchema = new Schema<IGuild>(
     logChannelId: { type: String },
     modLogChannelId: { type: String },
     welcomeChannelId: { type: String },
+    ticketCategoryId: { type: String },
     verificationRoleId: { type: String },
   },
   {

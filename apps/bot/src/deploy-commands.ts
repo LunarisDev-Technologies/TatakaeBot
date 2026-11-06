@@ -5,6 +5,7 @@ import { ticketCommand } from './commands/ticket.command.js';
 import { bookingCommand } from './commands/booking.command.js';
 import { moderationCommand } from './commands/moderation.command.js';
 import { setupCommand, dashboardCommand } from './commands/setup.command.js';
+import { provisionCommand } from './commands/provision.command.js';
 
 const commands = [
   ticketCommand.data.toJSON(),
@@ -12,6 +13,7 @@ const commands = [
   moderationCommand.data.toJSON(),
   setupCommand.data.toJSON(),
   dashboardCommand.data.toJSON(),
+  provisionCommand.data.toJSON(),
 ];
 
 const rest = new REST({ version: '10' }).setToken(env.DISCORD_TOKEN);

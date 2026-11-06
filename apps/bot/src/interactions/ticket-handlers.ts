@@ -12,7 +12,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
-import { TicketCategoryModel } from '@tatakae/database';
+import { TicketCategoryModel, GuildModel } from '@tatakae/database';
 import { TicketStatus } from '@tatakae/shared';
 import { ticketService, ticketRepository } from '@tatakae/core';
 
@@ -70,9 +70,11 @@ export async function handleTicketModalSubmit(interaction: ModalSubmitInteractio
   const channelName = `ticket-${ticket.ticketNumber}`;
 
   try {
+    const guildConfig: any = await GuildModel.findById(interaction.guildId).lean();
     const channel = await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildText,
+      parent: guildConfig?.ticketCategoryId || undefined,
       permissionOverwrites: [
         {
           id: guild.roles.everyone.id,

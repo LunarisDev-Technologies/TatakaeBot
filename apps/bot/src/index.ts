@@ -7,6 +7,7 @@ import { ticketCommand } from './commands/ticket.command.js';
 import { bookingCommand } from './commands/booking.command.js';
 import { moderationCommand } from './commands/moderation.command.js';
 import { setupCommand, dashboardCommand } from './commands/setup.command.js';
+import { provisionCommand } from './commands/provision.command.js';
 import {
   handleCategorySelect,
   handleTicketModalSubmit,
@@ -25,6 +26,7 @@ const commandMap = new Map<string, any>([
   ['mod', moderationCommand],
   ['setup', setupCommand],
   ['dashboard', dashboardCommand],
+  ['provision', provisionCommand],
 ]);
 
 client.on('ready', async () => {
