@@ -33,15 +33,16 @@ app.addContentTypeParser(['application/json', 'text/plain'], { parseAs: 'buffer'
   }
 });
 
-// Database connection plugin
-app.register(async () => {
-  try {
-    await connectDatabase();
-    await seedDatabase();
-  } catch (dbErr) {
-    logger.warn({ err: dbErr }, '⚠️ MongoDB not reachable at start, continuing server startup...');
-  }
-});
+// Background Database Connection (non-blocking for fast serverless cold starts)
+if (process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('localhost')) {
+  connectDatabase()
+    .then(() => seedDatabase())
+    .catch((err) => logger.warn({ err }, '⚠️ MongoDB background connection failed'));
+} else if (!process.env.VERCEL) {
+  connectDatabase()
+    .then(() => seedDatabase())
+    .catch((err) => logger.warn({ err }, '⚠️ Local MongoDB startup warning'));
+}
 
 app.register(helmet, { contentSecurityPolicy: false });
 app.register(cors, { origin: true, credentials: true });
@@ -103,4 +104,7 @@ if (!process.env.VERCEL) {
   });
 }
 
-export default app;
+export default async function handler(req: any, res: any) {
+  await app.ready();
+  app.server.emit('request', req, res);
+}

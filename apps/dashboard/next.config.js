@@ -14,8 +14,8 @@ const nextConfig = {
     const apiUrl = process.env.API_URL || 'http://localhost:4000';
     return [
       {
-        source: '/api/:path*',
-        destination: `${apiUrl}/api/:path*`,
+        source: '/api/((?!interactions).*)',
+        destination: `${apiUrl}/api/:1`,
       },
       {
         source: '/docs/:path*',

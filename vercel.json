@@ -21,6 +21,12 @@
   },
   "rewrites": [
     {
+      "source": "/api/interactions",
+      "destination": {
+        "service": "dashboard"
+      }
+    },
+    {
       "source": "/api/(.*)",
       "destination": {
         "service": "api"
