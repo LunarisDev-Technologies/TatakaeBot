@@ -60,7 +60,7 @@ export default function HomePage() {
             Open Control Center <ChevronRight className="w-4 h-4" />
           </Link>
           <a
-            href="http://localhost:4000/docs"
+            href="/docs"
             target="_blank"
             rel="noreferrer"
             className="px-6 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 font-semibold text-sm border border-slate-700 transition flex items-center gap-2"

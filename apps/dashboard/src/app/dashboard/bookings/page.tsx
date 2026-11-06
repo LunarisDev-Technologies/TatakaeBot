@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, CheckCircle2, XCircle, User, Mail, RefreshCw } from 'lucide-react';
 
 const GUILD_ID = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID || '1169300074115911820';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 interface RealBooking {
   _id: string;

@@ -72,9 +72,10 @@ async function start() {
   });
 
   try {
-    await app.listen({ port: env.API_PORT, host: '0.0.0.0' });
-    logger.info(`🚀 Tatakae Nexus API running at http://localhost:${env.API_PORT}`);
-    logger.info(`📖 OpenAPI documentation available at http://localhost:${env.API_PORT}/docs`);
+    const port = Number(process.env.PORT) || env.API_PORT;
+    await app.listen({ port, host: '0.0.0.0' });
+    logger.info(`🚀 Tatakae Nexus API running at http://localhost:${port}`);
+    logger.info(`📖 OpenAPI documentation available at http://localhost:${port}/docs`);
   } catch (err) {
     logger.fatal({ err }, 'Failed to start API server');
     process.exit(1);

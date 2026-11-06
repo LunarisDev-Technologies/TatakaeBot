@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Settings, Save, Server, Bell, Check, RefreshCw } from 'lucide-react';
 
 const GUILD_ID = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID || '1169300074115911820';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function SettingsPage() {
   const [saved, setSaved] = useState(false);

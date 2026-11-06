@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <div className="flex items-center gap-4">
             <a
-              href="http://localhost:4000/docs"
+              href="/docs"
               target="_blank"
               rel="noreferrer"
               className="text-xs text-slate-400 hover:text-cyan-400 transition flex items-center gap-1.5"
