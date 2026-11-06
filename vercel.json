@@ -2,10 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "api": {
-      "root": "apps/api"
+      "root": "apps/api",
+      "framework": "fastify",
+      "entrypoint": "src/server.ts"
     },
     "dashboard": {
       "root": "apps/dashboard",
+      "framework": "nextjs",
       "bindings": [
         {
           "type": "service",

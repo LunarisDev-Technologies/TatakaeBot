@@ -17,69 +17,72 @@ const app = Fastify({
   logger: false,
 });
 
-async function start() {
+// Database connection plugin
+app.register(async () => {
   try {
     await connectDatabase();
     await seedDatabase();
   } catch (dbErr) {
     logger.warn({ err: dbErr }, '⚠️ MongoDB not reachable at start, continuing server startup...');
   }
+});
 
-  await app.register(helmet, { contentSecurityPolicy: false });
-  await app.register(cors, { origin: true, credentials: true });
-  await app.register(rateLimit, { max: 200, timeWindow: '1 minute' });
+app.register(helmet, { contentSecurityPolicy: false });
+app.register(cors, { origin: true, credentials: true });
+app.register(rateLimit, { max: 200, timeWindow: '1 minute' });
 
-  // OpenAPI Swagger Documentation
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: 'Tatakae Nexus API',
-        description: 'Centralized Discord Management Platform API for Tatakae Labs',
-        version: '1.0.0',
-      },
-      servers: [{ url: `http://localhost:${env.API_PORT}` }],
+// OpenAPI Swagger Documentation
+app.register(swagger, {
+  openapi: {
+    info: {
+      title: 'Tatakae Nexus API',
+      description: 'Centralized Discord Management Platform API for Tatakae Labs',
+      version: '1.0.0',
+    },
+    servers: [{ url: `http://localhost:${env.API_PORT}` }],
+  },
+});
+
+app.register(swaggerUi, {
+  routePrefix: '/docs',
+});
+
+// Healthcheck
+app.get('/health', async () => {
+  return { status: 'healthy', database: 'mongodb', timestamp: new Date().toISOString() };
+});
+
+// Modular Routes
+app.register(overviewRoutes, { prefix: '/api' });
+app.register(ticketRoutes, { prefix: '/api' });
+app.register(bookingRoutes, { prefix: '/api' });
+app.register(moderationRoutes, { prefix: '/api' });
+app.register(auditRoutes, { prefix: '/api' });
+
+// Centralized Error Handling
+app.setErrorHandler((error, request, reply) => {
+  logger.error({ err: error, url: request.url }, 'API Request Error');
+  const err = error as any;
+  const statusCode = err.statusCode || 500;
+  return reply.status(statusCode).send({
+    success: false,
+    error: {
+      code: err.code || 'INTERNAL_ERROR',
+      message: err.message || 'An unexpected error occurred.',
     },
   });
+});
 
-  await app.register(swaggerUi, {
-    routePrefix: '/docs',
-  });
+const port = Number(process.env.PORT) || env.API_PORT;
 
-  // Healthcheck
-  app.get('/health', async () => {
-    return { status: 'healthy', database: 'mongodb', timestamp: new Date().toISOString() };
-  });
-
-  // Modular Routes
-  await app.register(overviewRoutes, { prefix: '/api' });
-  await app.register(ticketRoutes, { prefix: '/api' });
-  await app.register(bookingRoutes, { prefix: '/api' });
-  await app.register(moderationRoutes, { prefix: '/api' });
-  await app.register(auditRoutes, { prefix: '/api' });
-
-  // Centralized Error Handling
-  app.setErrorHandler((error, request, reply) => {
-    logger.error({ err: error, url: request.url }, 'API Request Error');
-    const err = error as any;
-    const statusCode = err.statusCode || 500;
-    return reply.status(statusCode).send({
-      success: false,
-      error: {
-        code: err.code || 'INTERNAL_ERROR',
-        message: err.message || 'An unexpected error occurred.',
-      },
-    });
-  });
-
-  try {
-    const port = Number(process.env.PORT) || env.API_PORT;
-    await app.listen({ port, host: '0.0.0.0' });
+if (!process.env.VERCEL) {
+  app.listen({ port, host: '0.0.0.0' }).then(() => {
     logger.info(`🚀 Tatakae Nexus API running at http://localhost:${port}`);
     logger.info(`📖 OpenAPI documentation available at http://localhost:${port}/docs`);
-  } catch (err) {
+  }).catch((err) => {
     logger.fatal({ err }, 'Failed to start API server');
     process.exit(1);
-  }
+  });
 }
 
-start();
+export default app;
