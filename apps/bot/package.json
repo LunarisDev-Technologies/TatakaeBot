@@ -1,0 +1,29 @@
+{
+  "name": "@tatakae/bot",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && node --watch dist/index.js",
+    "start": "node dist/index.js",
+    "deploy:commands": "node dist/deploy-commands.js"
+  },
+  "dependencies": {
+    "@discordjs/builders": "^1.10.0",
+    "@discordjs/rest": "^2.4.2",
+    "@tatakae/config": "*",
+    "@tatakae/core": "*",
+    "@tatakae/database": "*",
+    "@tatakae/logger": "*",
+    "@tatakae/shared": "*",
+    "discord-api-types": "^0.38.50",
+    "discord.js": "^14.17.3",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.15",
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3"
+  }
+}
+

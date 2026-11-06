@@ -1,0 +1,20 @@
+{
+  "name": "@tatakae/database",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc",
+    "seed": "tsc && node dist/seed.js"
+  },
+  "dependencies": {
+    "@tatakae/shared": "*",
+    "dotenv": "^16.4.7",
+    "mongoose": "^8.9.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3"
+  }
+}

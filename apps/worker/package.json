@@ -1,0 +1,24 @@
+{
+  "name": "@tatakae/worker",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && node --watch dist/index.js",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@tatakae/config": "*",
+    "@tatakae/core": "*",
+    "@tatakae/database": "*",
+    "@tatakae/logger": "*",
+    "@tatakae/shared": "*",
+    "bullmq": "^5.41.0",
+    "ioredis": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3"
+  }
+}
+

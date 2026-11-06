@@ -1,0 +1,842 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+// -------------------------------------------------------------
+// CORE & GUILD ENTITIES
+// -------------------------------------------------------------
+
+model Guild {
+  id               String           @id // Discord Guild Snowflake ID
+  name             String
+  icon             String?
+  ownerId          String
+  active           Boolean          @default(true)
+  settings         GuildSetting?
+  moduleSettings   ModuleSetting[]
+  members          GuildMember[]
+  staffMembers     StaffMember[]
+  roles            Role[]
+  ticketCategories TicketCategory[]
+  ticketPanels     TicketPanel[]
+  tickets          Ticket[]
+  bookingServices  BookingService[]
+  bookings         Booking[]
+  moderationCases  ModerationCase[]
+  automodRules     AutomodRule[]
+  blockedTerms     BlockedTerm[]
+  events           Event[]
+  announcements    Announcement[]
+  polls            Poll[]
+  memberXp         MemberXp[]
+  giveaways        Giveaway[]
+  suggestions      Suggestion[]
+  forms            Form[]
+  automationRules  AutomationRule[]
+  auditLogs        AuditLog[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@map("guilds")
+}
+
+model GuildSetting {
+  id               String   @id @default(uuid())
+  guildId          String   @unique
+  guild            Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  prefix           String   @default("!")
+  timezone         String   @default("Asia/Kolkata")
+  logChannelId     String?
+  modLogChannelId  String?
+  ticketCategoryId String?
+  welcomeChannelId String?
+  welcomeMessage   String?
+  verificationRole String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("guild_settings")
+}
+
+model User {
+  id            String        @id @default(uuid())
+  discordId     String        @unique // Discord User Snowflake ID
+  username      String
+  discriminator String        @default("0")
+  avatar        String?
+  email         String?
+  guildMembers  GuildMember[]
+  staffProfiles StaffMember[]
+  tickets       Ticket[]      @relation("TicketCreator")
+  bookings      Booking[]     @relation("BookingUser")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("users")
+}
+
+model GuildMember {
+  id        String    @id @default(uuid())
+  guildId   String
+  guild     Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discordId String
+  nickname  String?
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  isInGuild Boolean   @default(true)
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([guildId, discordId])
+  @@index([guildId, isInGuild])
+  @@map("guild_members")
+}
+
+model StaffMember {
+  id           String                  @id @default(uuid())
+  guildId      String
+  guild        Guild                   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discordId    String
+  role         String                  @default("SUPPORT") // ADMINISTRATOR, MANAGER, MODERATOR, SUPPORT
+  customTitle  String?
+  active       Boolean                 @default(true)
+  assignments  TicketAssignment[]
+  notes        TicketNote[]
+  services     BookingStaff[]
+  availability StaffAvailability[]
+  exceptions   AvailabilityException[]
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@unique([guildId, discordId])
+  @@map("staff_members")
+}
+
+model Role {
+  id               String           @id @default(uuid())
+  guildId          String
+  guild            Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  discordRoleId    String           @unique
+  name             String
+  color            String?
+  position         Int              @default(0)
+  isStaff          Boolean          @default(false)
+  isSelfAssignable Boolean          @default(false)
+  permissions      RolePermission[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@map("roles")
+}
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  roleId     String
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission String
+  createdAt  DateTime @default(now())
+
+  @@unique([roleId, permission])
+  @@map("role_permissions")
+}
+
+model ModuleSetting {
+  id        String   @id @default(uuid())
+  guildId   String
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  module    String // TICKETS, BOOKINGS, MODERATION, MEMBERS, EVENTS, ENGAGEMENT, AUTOMATION
+  enabled   Boolean  @default(true)
+  config    Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, module])
+  @@map("module_settings")
+}
+
+// -------------------------------------------------------------
+// TICKETS MODULE
+// -------------------------------------------------------------
+
+enum TicketStatus {
+  OPEN
+  CLAIMED
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model TicketCategory {
+  id                  String   @id @default(uuid())
+  guildId             String
+  guild               Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  emoji               String?
+  discordCategoryId   String?
+  staffRoleId         String?
+  ticketNamingPattern String   @default("ticket-{number}")
+  formSchema          Json     @default("[]")
+  autoCloseHours      Int      @default(72)
+  active              Boolean  @default(true)
+  tickets             Ticket[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("ticket_categories")
+}
+
+model TicketPanel {
+  id          String   @id @default(uuid())
+  guildId     String
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  channelId   String
+  messageId   String   @unique
+  title       String
+  description String
+  categoryIds Json     @default("[]") // Array of TicketCategory IDs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ticket_panels")
+}
+
+model Ticket {
+  id             String              @id @default(uuid())
+  guildId        String
+  guild          Guild               @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  ticketNumber   Int
+  userId         String
+  user           User                @relation("TicketCreator", fields: [userId], references: [id], onDelete: Cascade)
+  creatorDiscord String
+  categoryId     String
+  category       TicketCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  status         TicketStatus        @default(OPEN)
+  priority       TicketPriority      @default(NORMAL)
+  channelId      String?
+  subject        String?
+  initialAnswers Json                @default("{}")
+  closedAt       DateTime?
+  closedById     String?
+  assignments    TicketAssignment[]
+  participants   TicketParticipant[]
+  messages       TicketMessage[]
+  notes          TicketNote[]
+  transcript     TicketTranscript?
+  rating         TicketRating?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([guildId, ticketNumber])
+  @@index([guildId, status])
+  @@index([creatorDiscord])
+  @@map("tickets")
+}
+
+model TicketAssignment {
+  id         String      @id @default(uuid())
+  ticketId   String
+  ticket     Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  staffId    String
+  staff      StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  assignedAt DateTime    @default(now())
+
+  @@unique([ticketId, staffId])
+  @@map("ticket_assignments")
+}
+
+model TicketParticipant {
+  id            String   @id @default(uuid())
+  ticketId      String
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  discordUserId String
+  accessLevel   String   @default("MEMBER") // MEMBER, OBSERVER
+  addedAt       DateTime @default(now())
+
+  @@unique([ticketId, discordUserId])
+  @@map("ticket_participants")
+}
+
+model TicketMessage {
+  id               String   @id @default(uuid())
+  ticketId         String
+  ticket           Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  discordMessageId String?
+  authorId         String
+  authorName       String
+  authorAvatar     String?
+  content          String
+  attachments      Json     @default("[]")
+  createdAt        DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+model TicketNote {
+  id        String      @id @default(uuid())
+  ticketId  String
+  ticket    Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime    @default(now())
+
+  @@map("ticket_notes")
+}
+
+model TicketTranscript {
+  id           String   @id @default(uuid())
+  ticketId     String   @unique
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  storagePath  String?
+  htmlContent  String?  @db.Text
+  messageCount Int      @default(0)
+  generatedAt  DateTime @default(now())
+
+  @@map("ticket_transcripts")
+}
+
+model TicketRating {
+  id        String   @id @default(uuid())
+  ticketId  String   @unique
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  rating    Int // 1 to 5
+  feedback  String?
+  createdAt DateTime @default(now())
+
+  @@map("ticket_ratings")
+}
+
+// -------------------------------------------------------------
+// BOOKING & APPOINTMENT MODULE
+// -------------------------------------------------------------
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  REJECTED
+  NO_SHOW
+  RESCHEDULED
+}
+
+model BookingService {
+  id               String            @id @default(uuid())
+  guildId          String
+  guild            Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  durationMinutes  Int               @default(30)
+  bufferMinutes    Int               @default(15)
+  capacity         Int               @default(1)
+  requiresApproval Boolean           @default(false)
+  active           Boolean           @default(true)
+  assignedStaff    BookingStaff[]
+  bookings         Booking[]
+  questions        BookingQuestion[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@map("booking_services")
+}
+
+model BookingStaff {
+  id        String         @id @default(uuid())
+  serviceId String
+  service   BookingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     StaffMember    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, staffId])
+  @@map("booking_staff")
+}
+
+model StaffAvailability {
+  id        String      @id @default(uuid())
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  weekday   Int // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime String // "09:00" in 24h format
+  endTime   String // "17:00" in 24h format
+
+  @@index([staffId, weekday])
+  @@map("staff_availability")
+}
+
+model AvailabilityException {
+  id            String      @id @default(uuid())
+  staffId       String
+  staff         StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  startAt       DateTime
+  endAt         DateTime
+  exceptionType String      @default("OFF") // OFF, CUSTOM_HOURS
+  note          String?
+
+  @@index([staffId, startAt, endAt])
+  @@map("availability_exceptions")
+}
+
+model Booking {
+  id             String            @id @default(uuid())
+  guildId        String
+  guild          Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  serviceId      String
+  service        BookingService    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User              @relation("BookingUser", fields: [userId], references: [id], onDelete: Cascade)
+  staffId        String?
+  clientName     String
+  clientEmail    String
+  discordId      String
+  purpose        String
+  startAt        DateTime
+  endAt          DateTime
+  status         BookingStatus     @default(PENDING)
+  notes          String?
+  discordEventId String?
+  answers        BookingAnswer[]
+  reminders      BookingReminder[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([guildId, startAt, endAt])
+  @@index([staffId, startAt, endAt])
+  @@map("bookings")
+}
+
+model BookingQuestion {
+  id         String          @id @default(uuid())
+  serviceId  String
+  service    BookingService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  question   String
+  fieldType  String          @default("TEXT") // TEXT, TEXTAREA, NUMBER, SELECT
+  required   Boolean         @default(true)
+  orderIndex Int             @default(0)
+  answers    BookingAnswer[]
+
+  @@map("booking_questions")
+}
+
+model BookingAnswer {
+  id         String          @id @default(uuid())
+  bookingId  String
+  booking    Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  questionId String
+  question   BookingQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer     String
+
+  @@map("booking_answers")
+}
+
+model BookingReminder {
+  id          String    @id @default(uuid())
+  bookingId   String
+  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime
+  sentAt      DateTime?
+  status      String    @default("PENDING") // PENDING, SENT, FAILED
+  createdAt   DateTime  @default(now())
+
+  @@index([scheduledAt, status])
+  @@map("booking_reminders")
+}
+
+// -------------------------------------------------------------
+// MODERATION MODULE
+// -------------------------------------------------------------
+
+enum ModerationAction {
+  WARN
+  TIMEOUT
+  KICK
+  BAN
+  UNBAN
+  REMOVE_TIMEOUT
+}
+
+model ModerationCase {
+  id              String            @id @default(uuid())
+  guildId         String
+  guild           Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  caseNumber      Int
+  userId          String // Target Discord User Snowflake
+  moderatorId     String // Moderator Discord User Snowflake
+  action          ModerationAction
+  reason          String?
+  durationSeconds Int?
+  active          Boolean           @default(true)
+  expiresAt       DateTime?
+  warnings        Warning[]
+  appeal          ModerationAppeal?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([guildId, caseNumber])
+  @@index([guildId, userId])
+  @@map("moderation_cases")
+}
+
+model Warning {
+  id        String         @id @default(uuid())
+  caseId    String
+  case      ModerationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId    String
+  points    Int            @default(1)
+  expiresAt DateTime?
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+
+  @@index([userId, isActive])
+  @@map("warnings")
+}
+
+model AutomodRule {
+  id            String   @id @default(uuid())
+  guildId       String
+  guild         Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  ruleType      String // SPAM, MENTION_SPAM, LINKS, INVITES, NEW_ACCOUNTS
+  configuration Json     @default("{}")
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([guildId, ruleType])
+  @@map("automod_rules")
+}
+
+model BlockedTerm {
+  id        String   @id @default(uuid())
+  guildId   String
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  term      String
+  matchType String   @default("CONTAINS") // EXACT, CONTAINS, REGEX
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("blocked_terms")
+}
+
+model ModerationAppeal {
+  id            String         @id @default(uuid())
+  caseId        String         @unique
+  case          ModerationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId        String
+  appealReason  String
+  status        String         @default("PENDING") // PENDING, APPROVED, REJECTED
+  decisionNotes String?
+  reviewedById  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("moderation_appeals")
+}
+
+// -------------------------------------------------------------
+// EVENTS & COMMUNITY MODULE
+// -------------------------------------------------------------
+
+model Event {
+  id             String            @id @default(uuid())
+  guildId        String
+  guild          Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  bannerUrl      String?
+  channelId      String?
+  startAt        DateTime
+  endAt          DateTime?
+  capacity       Int?
+  discordEventId String?
+  status         String            @default("SCHEDULED") // SCHEDULED, ACTIVE, COMPLETED, CANCELLED
+  rsvps          EventRsvp[]
+  attendance     EventAttendance[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([guildId, startAt])
+  @@map("events")
+}
+
+model EventRsvp {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String // Discord User ID
+  response  String   @default("ACCEPTED") // ACCEPTED, DECLINED, TENTATIVE
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@map("event_rsvps")
+}
+
+model EventAttendance {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String // Discord User ID
+  checkedInAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@map("event_attendance")
+}
+
+model Announcement {
+  id          String    @id @default(uuid())
+  guildId     String
+  guild       Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  title       String?
+  content     String
+  channelId   String
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  status      String    @default("DRAFT") // DRAFT, SCHEDULED, SENT, CANCELLED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("announcements")
+}
+
+model Poll {
+  id             String       @id @default(uuid())
+  guildId        String
+  guild          Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  channelId      String
+  question       String
+  multipleChoice Boolean      @default(false)
+  expiresAt      DateTime?
+  status         String       @default("ACTIVE") // ACTIVE, CLOSED
+  options        PollOption[]
+  votes          PollVote[]
+  createdAt      DateTime     @default(now())
+
+  @@map("polls")
+}
+
+model PollOption {
+  id         String     @id @default(uuid())
+  pollId     String
+  poll       Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  label      String
+  orderIndex Int        @default(0)
+  votes      PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id        String     @id @default(uuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime   @default(now())
+
+  @@unique([pollId, userId, optionId])
+  @@map("poll_votes")
+}
+
+model MemberXp {
+  id           String          @id @default(uuid())
+  guildId      String
+  guild        Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId       String
+  totalXp      Int             @default(0)
+  level        Int             @default(1)
+  lastEarnedAt DateTime        @default(now())
+  transactions XpTransaction[]
+
+  @@unique([guildId, userId])
+  @@index([guildId, totalXp])
+  @@map("member_xp")
+}
+
+model XpTransaction {
+  id         String   @id @default(uuid())
+  memberXpId String
+  memberXp   MemberXp @relation(fields: [memberXpId], references: [id], onDelete: Cascade)
+  amount     Int
+  reason     String
+  createdAt  DateTime @default(now())
+
+  @@map("xp_transactions")
+}
+
+model Giveaway {
+  id          String   @id @default(uuid())
+  guildId     String
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  channelId   String
+  messageId   String?
+  prize       String
+  winnerCount Int      @default(1)
+  endsAt      DateTime
+  winnerIds   Json     @default("[]") // Array of Discord User IDs
+  status      String   @default("ACTIVE") // ACTIVE, ENDED, CANCELLED
+  createdAt   DateTime @default(now())
+
+  @@map("giveaways")
+}
+
+model Suggestion {
+  id        String           @id @default(uuid())
+  guildId   String
+  guild     Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId    String // Discord User ID
+  content   String
+  status    String           @default("PENDING") // PENDING, APPROVED, REJECTED, IMPLEMENTED
+  votes     SuggestionVote[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("suggestions")
+}
+
+model SuggestionVote {
+  id           String     @id @default(uuid())
+  suggestionId String
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  userId       String
+  vote         String // UPVOTE, DOWNVOTE
+  createdAt    DateTime   @default(now())
+
+  @@unique([suggestionId, userId])
+  @@map("suggestion_votes")
+}
+
+// -------------------------------------------------------------
+// APPLICATIONS & FORMS MODULE
+// -------------------------------------------------------------
+
+model Form {
+  id          String           @id @default(uuid())
+  guildId     String
+  guild       Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  formType    String           @default("STAFF_APPLICATION")
+  schema      Json             @default("[]")
+  active      Boolean          @default(true)
+  submissions FormSubmission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("forms")
+}
+
+model FormSubmission {
+  id        String              @id @default(uuid())
+  formId    String
+  form      Form                @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId    String // Discord User ID
+  answers   Json                @default("{}")
+  status    String              @default("PENDING") // PENDING, UNDER_REVIEW, ACCEPTED, REJECTED
+  reviews   ApplicationReview[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@map("form_submissions")
+}
+
+model ApplicationReview {
+  id           String         @id @default(uuid())
+  submissionId String
+  submission   FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewerId   String // Discord User ID
+  decision     String // ACCEPTED, REJECTED
+  comments     String?
+  createdAt    DateTime       @default(now())
+
+  @@map("application_reviews")
+}
+
+// -------------------------------------------------------------
+// AUTOMATION & AUDIT LOGS MODULE
+// -------------------------------------------------------------
+
+model AutomationRule {
+  id         String   @id @default(uuid())
+  guildId    String
+  guild      Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  name       String
+  trigger    String // MEMBER_JOIN, TICKET_CREATED, TICKET_INACTIVE, LEVEL_UP, etc.
+  conditions Json     @default("[]")
+  actions    Json     @default("[]")
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("automation_rules")
+}
+
+model ScheduledJob {
+  id          String    @id @default(uuid())
+  jobType     String
+  payload     Json      @default("{}")
+  scheduledAt DateTime
+  executedAt  DateTime?
+  status      String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([scheduledAt, status])
+  @@map("scheduled_jobs")
+}
+
+model NotificationLog {
+  id          String   @id @default(uuid())
+  guildId     String
+  recipientId String
+  type        String
+  status      String   @default("SENT") // SENT, FAILED
+  sentAt      DateTime @default(now())
+  error       String?
+
+  @@map("notification_logs")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  guildId    String
+  guild      Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  actorId    String // Discord User Snowflake
+  action     String // e.g. TICKET_CLAIM, BOOKING_CONFIRM, WARN_MEMBER, SETTINGS_UPDATE
+  entityType String // GUILD, TICKET, BOOKING, MODERATION, MEMBER, ROLE, etc.
+  entityId   String?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([guildId, createdAt])
+  @@index([guildId, entityType])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}

@@ -1,0 +1,40 @@
+{
+  "name": "tatakae-nexus-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tatakae Nexus — Centralized Discord Management Platform and Administration Dashboard",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n \"api,bot,dashboard,worker\" -c \"cyan,green,magenta,yellow\" \"npm run dev:api\" \"npm run dev:bot\" \"npm run dev:dashboard\" \"npm run dev:worker\"",
+    "dev:api": "npm --workspace=@tatakae/api run dev",
+    "dev:bot": "npm --workspace=@tatakae/bot run dev",
+    "dev:dashboard": "npm --workspace=@tatakae/dashboard run dev",
+    "dev:worker": "npm --workspace=@tatakae/worker run dev",
+    "build": "npm run build --workspaces",
+    "seed": "npm --workspace=@tatakae/database run seed",
+    "docker:mongo": "docker compose up -d mongo redis",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@fastify/merge-json-schemas": "^0.2.0",
+    "ajv": "^8.17.1",
+    "caniuse-lite": "^1.0.30001822",
+    "discord-api-types": "^0.38.50",
+    "discord.js": "^14.17.3",
+    "lodash": "^4.17.21",
+    "obliterator": "^2.0.5",
+    "undici": "^6.21.1"
+  },
+  "optionalDependencies": {
+    "@next/swc-win32-x64-msvc": "15.1.7"
+  }
+}
