@@ -33,8 +33,5 @@
     "lodash": "^4.17.21",
     "obliterator": "^2.0.5",
     "undici": "^6.21.1"
-  },
-  "optionalDependencies": {
-    "@next/swc-win32-x64-msvc": "15.1.7"
   }
 }
