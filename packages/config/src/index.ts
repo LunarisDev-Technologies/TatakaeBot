@@ -13,6 +13,7 @@ const configSchema = z.object({
   DISCORD_TOKEN: z.string().default('placeholder_bot_token'),
   DISCORD_CLIENT_ID: z.string().default('placeholder_client_id'),
   DISCORD_CLIENT_SECRET: z.string().default('placeholder_client_secret'),
+  DISCORD_PUBLIC_KEY: z.string().optional(),
   DISCORD_GUILD_ID: z.string().default('placeholder_guild_id'),
   DISCORD_REDIRECT_URI: z.string().url().default('http://localhost:3000/api/auth/callback/discord'),
 

@@ -33,3 +33,4 @@ if (env.DISCORD_TOKEN && env.DISCORD_TOKEN !== 'placeholder_bot_token') {
 } else {
   logger.warn('DISCORD_TOKEN not configured.');
 }
+

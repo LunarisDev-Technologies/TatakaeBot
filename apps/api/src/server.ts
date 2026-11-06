@@ -12,9 +12,21 @@ import { bookingRoutes } from './routes/bookings.routes.js';
 import { moderationRoutes } from './routes/moderation.routes.js';
 import { overviewRoutes } from './routes/overview.routes.js';
 import { auditRoutes } from './routes/audit.routes.js';
+import { interactionsRoutes } from './routes/interactions.routes.js';
 
 const app = Fastify({
   logger: false,
+});
+
+// Preserve raw body Buffer for Discord Ed25519 webhook signature verification
+app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+  try {
+    (req as any).rawBody = body;
+    const json = JSON.parse(body.toString());
+    done(null, json);
+  } catch (err: any) {
+    done(err, undefined);
+  }
 });
 
 // Database connection plugin
@@ -58,6 +70,7 @@ app.register(ticketRoutes, { prefix: '/api' });
 app.register(bookingRoutes, { prefix: '/api' });
 app.register(moderationRoutes, { prefix: '/api' });
 app.register(auditRoutes, { prefix: '/api' });
+app.register(interactionsRoutes, { prefix: '/api' });
 
 // Centralized Error Handling
 app.setErrorHandler((error, request, reply) => {
