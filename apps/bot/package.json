@@ -6,6 +6,7 @@
     "build": "tsc",
     "dev": "tsc && node --watch dist/index.js",
     "start": "node dist/index.js",
+    "stay-online": "node dist/stay-online.js",
     "deploy:commands": "node dist/deploy-commands.js"
   },
   "dependencies": {
