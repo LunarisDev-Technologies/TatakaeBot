@@ -1,32 +1,29 @@
 import { FastifyPluginAsync } from 'fastify';
-import crypto from 'crypto';
+import nacl from 'tweetnacl';
 import { env } from '@tatakae/config';
 import { logger } from '@tatakae/logger';
 import { TicketCategoryModel, BookingServiceModel, GuildModel } from '@tatakae/database';
 
-function verifyDiscordSignature(
+const DEFAULT_PUBLIC_KEY = '74ff25a99089dbfcf22925a497a9e7bfc5603b466cce1e959113dc508e6908a7';
+
+function verifyDiscordRequest(
   rawBody: Buffer | string,
   signature: string,
   timestamp: string,
   clientPublicKey: string
 ): boolean {
+  if (!signature || !timestamp || !rawBody || !clientPublicKey) return false;
   try {
-    const pubKey = Buffer.from(clientPublicKey, 'hex');
+    const bodyBuffer = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody);
+    const message = Buffer.concat([Buffer.from(timestamp), bodyBuffer]);
     const sig = Buffer.from(signature, 'hex');
-    const msg = Buffer.concat([
-      Buffer.from(timestamp),
-      Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody),
-    ]);
+    const pubKey = Buffer.from(clientPublicKey, 'hex');
 
-    // Standard SPKI Der prefix for Ed25519
-    const spkiPrefix = Buffer.from('302a300506032b6570032100', 'hex');
-    const key = crypto.createPublicKey({
-      key: Buffer.concat([spkiPrefix, pubKey]),
-      format: 'der',
-      type: 'spki',
-    });
+    if (sig.length !== 64 || pubKey.length !== 32) {
+      return false;
+    }
 
-    return crypto.verify(null, msg, key, sig);
+    return nacl.sign.detached.verify(message, sig, pubKey);
   } catch (err) {
     logger.error({ err }, 'Signature verification exception');
     return false;
@@ -37,15 +34,15 @@ export const interactionsRoutes: FastifyPluginAsync = async (app) => {
   app.post('/interactions', async (request, reply) => {
     const signature = request.headers['x-signature-ed25519'] as string;
     const timestamp = request.headers['x-signature-timestamp'] as string;
-    const publicKey = process.env.DISCORD_PUBLIC_KEY || process.env.PUBLIC_KEY || '';
+    const publicKey =
+      process.env.DISCORD_PUBLIC_KEY ||
+      process.env.PUBLIC_KEY ||
+      DEFAULT_PUBLIC_KEY;
 
-    const rawBody = (request as any).rawBody || Buffer.from(JSON.stringify(request.body));
+    const rawBody = (request as any).rawBody || Buffer.from(JSON.stringify(request.body || {}));
 
-    // If PUBLIC_KEY is configured, enforce strict cryptographic Ed25519 verification
-    if (publicKey && publicKey !== 'placeholder_public_key') {
-      if (!signature || !timestamp || !verifyDiscordSignature(rawBody, signature, timestamp, publicKey)) {
-        return reply.status(401).send('Invalid request signature');
-      }
+    if (!verifyDiscordRequest(rawBody, signature, timestamp, publicKey)) {
+      return reply.status(401).send('Invalid request signature');
     }
 
     const interaction = request.body as any;
@@ -53,7 +50,7 @@ export const interactionsRoutes: FastifyPluginAsync = async (app) => {
 
     // 1. Handle PING (Type 1) - Required for Discord Endpoint URL registration
     if (interaction.type === 1) {
-      return reply.send({ type: 1 });
+      return reply.status(200).send({ type: 1 });
     }
 
     const guildId = interaction.guild_id || env.DISCORD_GUILD_ID;

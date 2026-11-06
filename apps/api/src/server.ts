@@ -19,10 +19,14 @@ const app = Fastify({
 });
 
 // Preserve raw body Buffer for Discord Ed25519 webhook signature verification
-app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+app.addContentTypeParser(['application/json', 'text/plain'], { parseAs: 'buffer' }, (req, body: any, done) => {
   try {
     (req as any).rawBody = body;
-    const json = JSON.parse(body.toString());
+    if (!body || body.length === 0) {
+      done(null, {});
+      return;
+    }
+    const json = JSON.parse(body.toString('utf-8'));
     done(null, json);
   } catch (err: any) {
     done(err, undefined);
@@ -71,6 +75,7 @@ app.register(bookingRoutes, { prefix: '/api' });
 app.register(moderationRoutes, { prefix: '/api' });
 app.register(auditRoutes, { prefix: '/api' });
 app.register(interactionsRoutes, { prefix: '/api' });
+app.register(interactionsRoutes);
 
 // Centralized Error Handling
 app.setErrorHandler((error, request, reply) => {

@@ -21,6 +21,7 @@
     "@tatakae/shared": "*",
     "ajv": "^8.17.1",
     "fastify": "^5.2.1",
+    "tweetnacl": "^1.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -28,4 +29,3 @@
     "typescript": "^5.7.3"
   }
 }
-
