@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "./dist/server.js",
   "scripts": {
+    "prebuild": "npm --prefix ../.. run build:packages",
     "build": "tsc",
     "dev": "tsc && node --watch dist/server.js",
     "start": "node dist/server.js"

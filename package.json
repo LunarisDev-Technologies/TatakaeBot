@@ -14,6 +14,7 @@
     "dev:dashboard": "npm --workspace=@tatakae/dashboard run dev",
     "dev:worker": "npm --workspace=@tatakae/worker run dev",
     "build": "npm run build --workspaces",
+    "build:packages": "npm run build --workspace=@tatakae/shared --workspace=@tatakae/config --workspace=@tatakae/logger --workspace=@tatakae/database --workspace=@tatakae/core",
     "seed": "npm --workspace=@tatakae/database run seed",
     "docker:mongo": "docker compose up -d mongo redis",
     "docker:down": "docker compose down"
